@@ -1,112 +1,26 @@
-import type { Format, SceneItem, Size, Variant } from '../types';
-import { getObjectBox, objects } from './library';
-import { getFormatSize } from './formats';
+import type {Format, SceneItem, Size, Variant} from '../types';
+import {getObjectBox, objects} from './library';
+import {getFormatSize} from './formats';
 
 export const MAX_MAIN = 4;
 export const MAX_BG = 3;
 
-const CANDIDATES = 150; // сколько раскладок пробуем на один вариант
-const GRID = 24;
-
-interface Box { x: number; y: number; w: number; h: number }
-
-function mulberry32(seed: number) {
-    let a = seed >>> 0;
-    return () => {
-        a = (a + 0x6d2b79f5) >>> 0;
-        let t = a;
-        t = Math.imul(t ^ (t >>> 15), t | 1);
-        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+interface Box {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
 }
 
-const area = (b: Box) => b.w * b.h;
-const inBox = (b: Box, x: number, y: number) =>
-    x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
-
-function overlapArea(a: Box, b: Box) {
-    const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
-    const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
-    return w > 0 && h > 0 ? w * h : 0;
+interface ObjectData {
+    id: string;
+    w: number;
+    h: number;
 }
 
-function gapBetween(a: Box, b: Box) {
-    const dx = Math.max(0, Math.max(a.x, b.x) - Math.min(a.x + a.w, b.x + b.w));
-    const dy = Math.max(0, Math.max(a.y, b.y) - Math.min(a.y + a.h, b.y + b.h));
-    return Math.hypot(dx, dy);
-}
-
-/** Доля холста, закрытая рамками объектов */
-function coverage(boxes: Box[], W: number, H: number) {
-    let hit = 0;
-    for (let i = 0; i < GRID; i++) {
-        for (let j = 0; j < GRID; j++) {
-            const x = ((i + 0.5) / GRID) * W;
-            const y = ((j + 0.5) / GRID) * H;
-            if (boxes.some((b) => inBox(b, x, y))) hit++;
-        }
-    }
-    return hit / (GRID * GRID);
-}
-
-/** Какая часть фонового объекта внутри холста не закрыта главными */
-function openShare(bg: Box, mains: Box[], W: number, H: number) {
-    let inside = 0;
-    let open = 0;
-    for (let i = 0; i < GRID; i++) {
-        for (let j = 0; j < GRID; j++) {
-            const x = ((i + 0.5) / GRID) * W;
-            const y = ((j + 0.5) / GRID) * H;
-            if (!inBox(bg, x, y)) continue;
-            inside++;
-            if (!mains.some((b) => inBox(b, x, y))) open++;
-        }
-    }
-    return inside ? open / inside : 0;
-}
-
-/** Чем выше балл, тем больше раскладка похожа на примеры */
-function score(mains: Box[], bgs: Box[], W: number, H: number) {
-    const canvas: Box = { x: 0, y: 0, w: W, h: H };
-    const diag = Math.max(W, H);
-    let s = 0;
-
-    // главные объекты не должны слишком сильно уходить за край
-    for (const b of mains) {
-        const v = overlapArea(b, canvas) / area(b);
-        if (v < 0.6) s -= (0.6 - v) * 6;
-        s += Math.min(v, 0.9) * 0.5;
-    }
-
-    // композиция занимает большую часть холста
-    const cov = coverage(mains, W, H);
-    if (cov < 0.55) s -= (0.55 - cov) * 5;
-    if (cov > 0.9) s -= (cov - 0.9) * 3;
-
-    // объекты рядом и слегка перекрываются
-    for (let i = 0; i < mains.length; i++) {
-        for (let j = i + 1; j < mains.length; j++) {
-            const ov = overlapArea(mains[i], mains[j]) / Math.min(area(mains[i]), area(mains[j]));
-            if (ov > 0.45) s -= (ov - 0.45) * 6;
-            s -= (gapBetween(mains[i], mains[j]) / diag) * 6;
-        }
-    }
-
-    // центр масс не уезжает от центра холста
-    const total = mains.reduce((sum, b) => sum + area(b), 0);
-    const cx = mains.reduce((sum, b) => sum + (b.x + b.w / 2) * area(b), 0) / total;
-    const cy = mains.reduce((sum, b) => sum + (b.y + b.h / 2) * area(b), 0) / total;
-    s -= (Math.hypot(cx - W / 2, cy - H / 2) / diag) * 2;
-
-    // фоновые: частично видны и не закрыты целиком
-    for (const b of bgs) {
-        const v = overlapArea(b, canvas) / area(b);
-        if (v < 0.35) s -= (0.35 - v) * 4;
-        const open = openShare(b, mains, W, H);
-        if (open < 0.3) s -= (0.3 - open) * 4;
-    }
-    return s;
+interface Point {
+    x: number;
+    y: number;
 }
 
 interface Params {
@@ -118,49 +32,289 @@ interface Params {
     seed: number;
 }
 
-/** Один seed = одна раскладка. Фоновые рисуются сзади, крупные главные ниже, мелкие выше */
-export function buildComposition({ mainIds, bgCount, size, format, bgId, seed }: Params): SceneItem[] {
-    const { w: W, h: H } = getFormatSize(bgId, size, format);
-    const rand = mulberry32(seed * 7919 + 13);
+const area = (box: Box) => box.w * box.h;
 
-    const mains: { id: string; w: number; h: number }[] = [];
-    for (const id of mainIds.slice(0, MAX_MAIN)) {
-        const box = getObjectBox(id, size, 'main');
-        if (box) mains.push({ id, w: box.w, h: box.h });
+function mulberry32(seed: number) {
+    let a = seed >>> 0;
+
+    return () => {
+        a = (a + 0x6d2b79f5) >>> 0;
+
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function getObjects(
+    ids: string[],
+    size: Size,
+    variant: Variant,
+): ObjectData[] {
+    return ids.flatMap((id) => {
+        const box = getObjectBox(id, size, variant);
+
+        return box
+            ? [{id, w: box.w, h: box.h}]
+            : [];
+    });
+}
+
+/** Позиция объекта задаётся его центром */
+function centeredBox(
+    object: ObjectData,
+    cx: number,
+    cy: number,
+): Box {
+    return {
+        x: cx - object.w / 2,
+        y: cy - object.h / 2,
+        w: object.w,
+        h: object.h,
+    };
+}
+
+/** Удерживает объект внутри холста */
+function keepInside(box: Box, W: number, H: number): Box {
+    return {
+        ...box,
+        x: Math.max(0, Math.min(box.x, Math.max(0, W - box.w))),
+        y: Math.max(0, Math.min(box.y, Math.max(0, H - box.h))),
+    };
+}
+
+/** Сдвигает группу к центру, не меняя размеры объектов */
+function centerGroup(
+    boxes: Box[],
+    W: number,
+    H: number,
+): Box[] {
+    if (!boxes.length) return boxes;
+
+    const minX = Math.min(...boxes.map((box) => box.x));
+    const minY = Math.min(...boxes.map((box) => box.y));
+    const maxX = Math.max(...boxes.map((box) => box.x + box.w));
+    const maxY = Math.max(...boxes.map((box) => box.y + box.h));
+
+    const groupW = maxX - minX;
+    const groupH = maxY - minY;
+
+    const marginX = W * 0.04;
+    const marginY = H * 0.04;
+
+    let dx = W / 2 - (minX + groupW / 2);
+    let dy = H / 2 - (minY + groupH / 2);
+
+    if (groupW <= W - marginX * 2) {
+        dx = Math.max(
+            marginX - minX,
+            Math.min(dx, W - marginX - maxX),
+        );
     }
+
+    if (groupH <= H - marginY * 2) {
+        dy = Math.max(
+            marginY - minY,
+            Math.min(dy, H - marginY - maxY),
+        );
+    }
+
+    return boxes.map((box) => ({
+        ...box,
+        x: box.x + dx,
+        y: box.y + dy,
+    }));
+}
+
+/**
+ * Варианты расположения главных объектов.
+ * Координаты указаны относительно размеров холста.
+ */
+const MAIN_LAYOUTS: Record<number, Point[][]> = {
+    1: [
+        [{x: 0.44, y: 0.46}],
+        [{x: 0.56, y: 0.46}],
+        [{x: 0.50, y: 0.42}],
+        [{x: 0.50, y: 0.56}],
+    ],
+
+    2: [
+        [{x: 0.35, y: 0.40}, {x: 0.65, y: 0.60}],
+        [{x: 0.35, y: 0.60}, {x: 0.65, y: 0.40}],
+        [{x: 0.50, y: 0.34}, {x: 0.50, y: 0.66}],
+        [{x: 0.34, y: 0.50}, {x: 0.66, y: 0.50}],
+    ],
+
+    3: [
+        [{x: 0.50, y: 0.34}, {x: 0.34, y: 0.68}, {x: 0.66, y: 0.68}],
+        [{x: 0.50, y: 0.66}, {x: 0.34, y: 0.32}, {x: 0.66, y: 0.32}],
+        [{x: 0.30, y: 0.50}, {x: 0.50, y: 0.50}, {x: 0.70, y: 0.50}],
+        [{x: 0.50, y: 0.28}, {x: 0.50, y: 0.50}, {x: 0.50, y: 0.72}],
+    ],
+
+    4: [
+        [
+            {x: 0.34, y: 0.34},
+            {x: 0.66, y: 0.34},
+            {x: 0.34, y: 0.66},
+            {x: 0.66, y: 0.66},
+        ],
+        [
+            {x: 0.50, y: 0.28},
+            {x: 0.72, y: 0.50},
+            {x: 0.50, y: 0.72},
+            {x: 0.28, y: 0.50},
+        ],
+        [
+            {x: 0.32, y: 0.38},
+            {x: 0.68, y: 0.38},
+            {x: 0.32, y: 0.62},
+            {x: 0.68, y: 0.62},
+        ],
+        [
+            {x: 0.28, y: 0.50},
+            {x: 0.48, y: 0.34},
+            {x: 0.72, y: 0.50},
+            {x: 0.52, y: 0.66},
+        ],
+    ],
+};
+
+function getMainPositions(
+    objects: ObjectData[],
+    W: number,
+    H: number,
+    seed: number,
+): Box[] {
+    const count = objects.length;
+    const layouts = MAIN_LAYOUTS[count];
+
+    if (!layouts) return [];
+
+    // Следующий seed выбирает следующий вариант композиции.
+    const layoutIndex = Math.abs(seed) % layouts.length;
+    const layout = layouts[layoutIndex];
+
+    const rand = mulberry32(seed * 7919 + 31);
+
+    const boxes = objects.map((object, index) => {
+        const point = layout[index];
+
+        // Небольшое изменение координат добавляет разнообразия,
+        // не разрушая общую структуру композиции.
+        const jitterX = (rand() - 0.5) * 0.025;
+        const jitterY = (rand() - 0.5) * 0.025;
+
+        return centeredBox(
+            object,
+            W * (point.x + jitterX),
+            H * (point.y + jitterY),
+        );
+    });
+
+    // Для одного объекта сохраняем небольшое смещение от центра.
+    if (count === 1) {
+        return boxes.map((box) => keepInside(box, W, H));
+    }
+
+    return centerGroup(boxes, W, H);
+}
+
+/** Фоновые элементы располагаются вокруг основной группы */
+function getBackgroundPositions(
+    objects: ObjectData[],
+    W: number,
+    H: number,
+    seed: number,
+): Box[] {
+    const layouts: Point[][] = [
+        [
+            {x: 0.14, y: 0.50},
+            {x: 0.86, y: 0.50},
+            {x: 0.50, y: 0.13},
+        ],
+        [
+            {x: 0.16, y: 0.20},
+            {x: 0.84, y: 0.80},
+            {x: 0.50, y: 0.13},
+        ],
+        [
+            {x: 0.16, y: 0.80},
+            {x: 0.84, y: 0.20},
+            {x: 0.50, y: 0.87},
+        ],
+        [
+            {x: 0.50, y: 0.13},
+            {x: 0.16, y: 0.50},
+            {x: 0.84, y: 0.50},
+        ],
+    ];
+
+    const layout = layouts[Math.abs(seed) % layouts.length];
+
+    return objects.map((object, index) => {
+        const point = layout[index];
+
+        return keepInside(
+            centeredBox(object, W * point.x, H * point.y),
+            W,
+            H,
+        );
+    });
+}
+
+export function buildComposition({
+                                     mainIds,
+                                     bgCount,
+                                     size,
+                                     format,
+                                     bgId,
+                                     seed,
+                                 }: Params): SceneItem[] {
+    const {w: W, h: H} = getFormatSize(bgId, size, format);
+
+    const mains = getObjects(
+        mainIds.slice(0, MAX_MAIN),
+        size,
+        'main',
+    );
+
     if (!mains.length) return [];
 
-    // фоновые объекты выбираем из остальных, порядок зависит от seed
+    const rand = mulberry32(seed * 7919 + 13);
+
+    const mainIdSet = new Set(mains.map((object) => object.id));
+
     const pool = objects
-        .map((o) => o.id)
-        .filter((id) => !mainIds.includes(id) && getObjectBox(id, size, 'bg'));
+        .map((object) => object.id)
+        .filter(
+            (id) =>
+                !mainIdSet.has(id) &&
+                Boolean(getObjectBox(id, size, 'bg')),
+        );
+
+    // Перемешиваем доступные фоновые объекты.
     for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(rand() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    const bgs: { id: string; w: number; h: number }[] = [];
-    for (const id of pool.slice(0, Math.min(bgCount, MAX_BG))) {
-        const box = getObjectBox(id, size, 'bg');
-        if (box) bgs.push({ id, w: box.w, h: box.h });
-    }
 
-    const place = (o: { w: number; h: number }, spread: number): Box => {
-        const cx = W * (0.5 + (rand() - 0.5) * 2 * spread);
-        const cy = H * (0.5 + (rand() - 0.5) * 2 * spread);
-        return { x: cx - o.w / 2, y: cy - o.h / 2, w: o.w, h: o.h };
-    };
+    const bgs = getObjects(
+        pool.slice(0, Math.min(bgCount, MAX_BG)),
+        size,
+        'bg',
+    );
 
-    let best: { s: number; m: Box[]; b: Box[] } | null = null;
-    for (let k = 0; k < CANDIDATES; k++) {
-        const m = mains.map((o, i) => place(o, i === 0 ? 0.2 : 0.4));
-        const b = bgs.map((o) => place(o, 0.6));
-        const s = score(m, b, W, H);
-        if (!best || s > best.s) best = { s, m, b };
-    }
-    if (!best) return [];
-    const chosen = best;
+    const mainBoxes = getMainPositions(mains, W, H, seed);
+    const bgBoxes = getBackgroundPositions(bgs, W, H, seed);
 
-    const toItem = (id: string, variant: Variant, box: Box): SceneItem => ({
+    const toItem = (
+        id: string,
+        variant: Variant,
+        box: Box,
+    ): SceneItem => ({
         uid: crypto.randomUUID(),
         objectId: id,
         variant,
@@ -170,10 +324,22 @@ export function buildComposition({ mainIds, bgCount, size, format, bgId, seed }:
     });
 
     const items: SceneItem[] = [];
-    bgs.forEach((o, i) => items.push(toItem(o.id, 'bg', chosen.b[i])));
+
+    // Фоновые объекты рисуются первыми.
+    bgs.forEach((object, index) => {
+        items.push(toItem(object.id, 'bg', bgBoxes[index]));
+    });
+
+    // Крупные главные объекты рисуются раньше мелких.
     mains
-        .map((o, i) => ({ o, box: chosen.m[i] }))
-        .sort((a, c) => area(c.box) - area(a.box))
-        .forEach(({ o, box }) => items.push(toItem(o.id, 'main', box)));
+        .map((object, index) => ({
+            object,
+            box: mainBoxes[index],
+        }))
+        .sort((a, b) => area(b.box) - area(a.box))
+        .forEach(({object, box}) => {
+            items.push(toItem(object.id, 'main', box));
+        });
+
     return items;
 }
