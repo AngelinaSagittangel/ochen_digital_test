@@ -1,10 +1,10 @@
-import type { Palette, SceneItem, Size, Format } from '../types';
+import type {Palette, SceneItem, Size, Format} from '../types';
 import {
     getBackgroundSvg, getObject, getObjectBox, getObjectSvg, parseSvg,
 } from './library';
-import { recolorSvg } from './recolor';
-import { bgIdOf } from './palettes';
-import { getBackgroundTransform, getFormatSize } from './formats';
+import {recolorSvg} from './recolor';
+import {bgIdOf} from './palettes';
+import {getBackgroundScale, getBackgroundTransform, getFormatSize, keepStrokeWidth} from './formats';
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -30,7 +30,7 @@ interface ExportParams {
 }
 
 /** Собирает итоговый SVG композиции. Объекты берутся из библиотеки как есть: меняется только transform */
-export function buildSceneSvg({ items, size, format, palette }: ExportParams): string {
+export function buildSceneSvg({items, size, format, palette}: ExportParams): string {
     const bgId = bgIdOf(palette);
     const canvas = getFormatSize(bgId, size, format);
     const bgTransform = getBackgroundTransform(bgId, size, format);
@@ -39,8 +39,9 @@ export function buildSceneSvg({ items, size, format, palette }: ExportParams): s
     // Фон
     const bgSvg = getBackgroundSvg(bgId, size);
     if (bgSvg) {
-        const { inner } = parseSvg(recolorSvg(bgSvg, palette, 'background'));
-        parts.push(`<g id="background" transform="${bgTransform}">${prefixIds(inner, 'bg')}</g>`);
+        const {inner} = parseSvg(recolorSvg(bgSvg, palette, 'background'));
+        const bgInner = keepStrokeWidth(inner, getBackgroundScale(bgId, size, format));
+        parts.push(`<g id="background" transform="${bgTransform}">${prefixIds(bgInner, 'bg')}</g>`);
     }
 
     // Объекты в порядке слоёв (последний сверху)
@@ -49,7 +50,7 @@ export function buildSceneSvg({ items, size, format, palette }: ExportParams): s
         const box = getObjectBox(item.objectId, size, item.variant);
         if (!svg || !box) return;
 
-        const { inner } = parseSvg(recolorSvg(svg, palette, item.variant));
+        const {inner} = parseSvg(recolorSvg(svg, palette, item.variant));
         const name = `item-${index + 1}-${item.objectId}-${item.variant}`;
         const transform =
             `translate(${round(item.x)} ${round(item.y)})` +
@@ -76,7 +77,7 @@ export function buildSceneSvg({ items, size, format, palette }: ExportParams): s
 }
 
 export function downloadSvg(svg: string, filename: string) {
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const blob = new Blob([svg], {type: 'image/svg+xml;charset=utf-8'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -84,3 +85,4 @@ export function downloadSvg(svg: string, filename: string) {
     a.click();
     URL.revokeObjectURL(url);
 }
+

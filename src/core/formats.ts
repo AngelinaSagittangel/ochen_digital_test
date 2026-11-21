@@ -26,3 +26,18 @@ export function getBackgroundTransform(bgId: string, size: Size, format: Format)
     const r = (n: number) => Math.round(n * 1000) / 1000;
     return `translate(${r(tx)} ${r(ty)}) scale(${r(scale)})`;
 }
+
+export function getBackgroundScale(bgId: string, size: Size, format: Format): number {
+    const base = getCanvasSize(bgId, size);
+    const c = getFormatSize(bgId, size, format);
+    return Math.max(c.w / base.w, c.h / base.h);
+}
+
+/** Чтобы линии фона после масштабирования остались той же толщины */
+export function keepStrokeWidth(markup: string, scale: number): string {
+    if (Math.abs(scale - 1) < 0.001) return markup;
+    return markup.replace(
+        /stroke-width="([\d.]+)"/g,
+        (_, v) => `stroke-width="${Math.round((Number(v) / scale) * 100) / 100}"`,
+    );
+}

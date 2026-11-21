@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
-import { useSceneStore, selectPalette } from '../../store/sceneStore';
-import { bgIdOf } from '../../core/palettes';
-import { recolorSvg } from '../../core/recolor';
-import { getFormatSize, getBackgroundTransform } from '../../core/formats';
-import { getBackgroundSvg, getObjectBox, getObjectSvg, parseSvg } from '../../core/library';
-import type { Palette, SceneItem, Size } from '../../types';
+import {useEffect, useRef} from 'react';
+import {useSceneStore, selectPalette} from '../../store/sceneStore';
+import {bgIdOf} from '../../core/palettes';
+import {recolorSvg} from '../../core/recolor';
+import {getFormatSize, getBackgroundTransform, keepStrokeWidth, getBackgroundScale} from '../../core/formats';
+import {getBackgroundSvg, getObjectBox, getObjectSvg, parseSvg} from '../../core/library';
+import type {Palette, SceneItem, Size} from '../../types';
 
 interface ItemViewProps {
     item: SceneItem;
@@ -14,17 +14,17 @@ interface ItemViewProps {
     onDown: (e: React.PointerEvent) => void;
 }
 
-function ItemView({ item, size, palette, selected, onDown }: ItemViewProps) {
+function ItemView({item, size, palette, selected, onDown}: ItemViewProps) {
     const svg = getObjectSvg(item.objectId, size, item.variant);
     const box = getObjectBox(item.objectId, size, item.variant);
     if (!svg || !box) return null;
 
-    const { inner } = parseSvg(recolorSvg(svg, palette, item.variant));
+    const {inner} = parseSvg(recolorSvg(svg, palette, item.variant));
     const transform = `translate(${item.x} ${item.y}) rotate(${item.rotation} ${box.w / 2} ${box.h / 2})`;
 
     return (
-        <g transform={transform} onPointerDown={onDown} style={{ cursor: 'move' }}>
-            <g dangerouslySetInnerHTML={{ __html: inner }} />
+        <g transform={transform} onPointerDown={onDown} style={{cursor: 'move'}}>
+            <g dangerouslySetInnerHTML={{__html: inner}}/>
             {selected && (
                 <rect
                     width={box.w} height={box.h} fill="none"
@@ -37,7 +37,7 @@ function ItemView({ item, size, palette, selected, onDown }: ItemViewProps) {
 }
 
 export default function Canvas() {
-    const { size, format, items, selectedId, select, move, remove } = useSceneStore();
+    const {size, format, items, selectedId, select, move, remove} = useSceneStore();
     const palette = useSceneStore(selectPalette);
     const bgId = bgIdOf(palette);
     const canvas = getFormatSize(bgId, size, format);
@@ -53,14 +53,14 @@ export default function Canvas() {
         pt.x = e.clientX;
         pt.y = e.clientY;
         const p = pt.matrixTransform(svg.getScreenCTM()!.inverse());
-        return { x: p.x, y: p.y };
+        return {x: p.x, y: p.y};
     };
 
     const onItemDown = (e: React.PointerEvent, item: SceneItem) => {
         e.stopPropagation();
         select(item.uid);
         const p = toScene(e);
-        drag.current = { uid: item.uid, sx: p.x, sy: p.y, ox: item.x, oy: item.y };
+        drag.current = {uid: item.uid, sx: p.x, sy: p.y, ox: item.x, oy: item.y};
         (e.currentTarget as Element).setPointerCapture(e.pointerId);
     };
 
@@ -83,7 +83,12 @@ export default function Canvas() {
         return () => window.removeEventListener('keydown', onKey);
     }, [remove]);
 
-    const bgInner = bgSvg ? parseSvg(recolorSvg(bgSvg, palette, 'background')).inner : '';
+    const bgInner = bgSvg
+        ? keepStrokeWidth(
+            parseSvg(recolorSvg(bgSvg, palette, 'background')).inner,
+            getBackgroundScale(bgId, size, format),
+        )
+        : '';
 
     return (
         <svg
@@ -99,7 +104,7 @@ export default function Canvas() {
             onPointerMove={onMove}
             onPointerUp={() => (drag.current = null)}
         >
-            <g transform={bgTransform} dangerouslySetInnerHTML={{ __html: bgInner }} />
+            <g transform={bgTransform} dangerouslySetInnerHTML={{__html: bgInner}}/>
             {items.map((item) => (
                 <ItemView
                     key={item.uid}
