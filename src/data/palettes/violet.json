@@ -1,0 +1,9 @@
+{
+  "id": "violet",
+  "name": "Фиолетовая",
+  "colors": {
+    "ink": "#181817", "paper": "#FFFFFF",
+    "bg-1": "#D7CDF5", "bg-2": "#AA9BF0", "bg-3": "#7864D7",
+    "obj-1": "#F9ECB0", "obj-2": "#F9A3AA", "obj-3": "#FFE3E1"
+  }
+}

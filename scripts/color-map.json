@@ -1,0 +1,20 @@
+{
+  "#181817": "ink",
+  "#FFFFFF": "paper",
+
+  "#D7CDF5": "bg-1",
+  "#AA9BF0": "bg-2",
+  "#7864D7": "bg-3",
+
+  "#FDD7B9": "bg-1",
+  "#FAC896": "bg-2",
+  "#D27532": "bg-3",
+
+  "#BEEBEB": "bg-1",
+  "#80DADA": "bg-2",
+  "#5ABEBE": "bg-3",
+
+  "#F9ECB0": "obj-1",
+  "#F9A3AA": "obj-2",
+  "#FFE3E1": "obj-3"
+}

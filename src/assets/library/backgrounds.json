@@ -1,0 +1,38 @@
+{
+  "peach": {
+    "L": {
+      "file": "backgrounds/L/peach.svg",
+      "w": 1000,
+      "h": 1000
+    },
+    "S": {
+      "file": "backgrounds/S/peach.svg",
+      "w": 500,
+      "h": 500
+    }
+  },
+  "teal": {
+    "L": {
+      "file": "backgrounds/L/teal.svg",
+      "w": 1000,
+      "h": 1000
+    },
+    "S": {
+      "file": "backgrounds/S/teal.svg",
+      "w": 500,
+      "h": 500
+    }
+  },
+  "violet": {
+    "L": {
+      "file": "backgrounds/L/violet.svg",
+      "w": 1000,
+      "h": 1000
+    },
+    "S": {
+      "file": "backgrounds/S/violet.svg",
+      "w": 500,
+      "h": 500
+    }
+  }
+}

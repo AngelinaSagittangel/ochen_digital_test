@@ -1,0 +1,9 @@
+{
+  "id": "teal",
+  "name": "Бирюзовая",
+  "colors": {
+    "ink": "#181817", "paper": "#FFFFFF",
+    "bg-1": "#BEEBEB", "bg-2": "#80DADA", "bg-3": "#5ABEBE",
+    "obj-1": "#FFD4F2", "obj-2": "#6D7BFC", "obj-3": "#B5C3FF"
+  }
+}
