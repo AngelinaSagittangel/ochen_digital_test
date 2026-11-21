@@ -1,75 +1,69 @@
-# React + TypeScript + Vite
+# Очень Digital — генератор иллюстраций
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+- Веб-приложение для создания иллюстраций из готовых SVG-элементов. Позволяет собирать композиции по текстовому описанию
+  или вручную, настраивать цветовую палитру и экспортировать результат в SVG.
 
-Currently, two official plugins are available:
+## Возможности
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Автоматическая сборка иллюстраций по метафоре или списку объектов.
 
-## React Compiler
+- Ручное добавление, перемещение и настройка SVG-элементов.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Переключение форматов иллюстрации: L и S.
 
-## Expanding the ESLint configuration
+- Разделение элементов на основные и фоновые.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Выбор одной из встроенных цветовых палитр или загрузка собственной.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Изменение цветового оформления с сохранением исходной геометрии SVG.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Генерация альтернативных вариантов композиции.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Экспорт готовой иллюстрации в SVG.
 
-```
+## Архитектура
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+- SVG-элементы хранятся локально в проекте и подключаются через import.meta.glob. Для них предусмотрены отдельные
+  варианты
+  размеров L и S, а также основные и фоновые версии.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- library.ts — загрузка и подготовка библиотеки SVG-элементов.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- metaphor.ts и parseComponents.ts — подбор элементов по метафоре или названиям объектов.
 
-```
+- layout.ts — автоматическое размещение элементов на холсте.
+
+- sceneStore.ts — хранение и обновление состояния текущей композиции.
+
+- palettes.ts и recolor.ts — работа с цветовыми палитрами и перекраска SVG.
+
+- formats.ts — настройки форматов L и S.
+
+- exportSvg.ts — подготовка и экспорт готовой иллюстрации.
+
+- Canvas — отображение и редактирование композиции.
+
+- При сборке используются существующие SVG-файлы: можно менять расположение, поворот, цвет и роль элемента в композиции,
+  но нельзя изменять его пропорции и внутреннюю геометрию.
+
+## Технологии
+
+``React
+TypeScript
+Vite
+Zustand
+SVG
+SCSS``
+
+## AI-инструменты
+
+- Claude — основная помощь в написании и реализации кода.
+- ChatGPT — помощь в разработке, поиске решений, отладке и подготовке словаря метафор для автоматического подбора
+SVG-элементов.
+
+- AI не генерирует иллюстрации во время работы приложения: композиции собираются из готовой библиотеки SVG-объектов.
+
+## Запуск проекта
+
+``npm install
+npm run dev``
