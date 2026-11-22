@@ -175,3 +175,64 @@ button.active {
     border-radius: 999px;
     background: #f3f3f5;
 }
+
+@media (max-width: 1100px) {
+    .app {
+        grid-template-columns: 240px minmax(0, 1fr) 240px;
+        gap: 10px;
+        padding: 10px;
+    }
+}
+
+@media (max-width: 800px) {
+    .app {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto minmax(400px, 1fr);
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .stage {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        min-height: 400px;
+    }
+
+    .panel {
+        min-width: 0;
+        max-height: 500px;
+    }
+
+    .canvas {
+        max-width: 100%;
+        max-height: 60vh;
+    }
+}
+
+@media (max-width: 500px) {
+    .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .stage {
+        grid-column: 1;
+        grid-row: 1;
+        min-height: 280px;
+    }
+
+    .panel {
+        max-height: none;
+    }
+
+    .canvas {
+        max-width: 100%;
+        max-height: 45vh;
+    }
+
+    .thumbs {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}

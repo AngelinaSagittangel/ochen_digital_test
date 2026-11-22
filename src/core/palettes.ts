@@ -14,7 +14,6 @@ export function getPalette(id: string): Palette | undefined {
     return palettes.find((p) => p.id === id);
 }
 
-/** Проверка палитры (готовой или загруженной). Возвращает список ошибок */
 export function validatePalette(raw: unknown): string[] {
     const errors: string[] = [];
     const p = raw as Partial<Palette>;
@@ -35,7 +34,6 @@ export function validatePalette(raw: unknown): string[] {
     return errors;
 }
 
-/** Разбор загруженного JSON-файла палитры */
 export function parsePaletteJson(text: string): Palette {
     let data: unknown;
     try {

@@ -8,7 +8,6 @@ import {getBackgroundScale, getBackgroundTransform, getFormatSize, keepStrokeWid
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
-/** Добавляет префикс ко всем id и ссылкам на них (url(#...), href="#..."), чтобы id не пересекались */
 function prefixIds(markup: string, prefix: string): string {
     const ids = [...markup.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]);
     let out = markup;
@@ -29,14 +28,12 @@ interface ExportParams {
     palette: Palette;
 }
 
-/** Собирает итоговый SVG композиции. Объекты берутся из библиотеки как есть: меняется только transform */
 export function buildSceneSvg({items, size, format, palette}: ExportParams): string {
     const bgId = bgIdOf(palette);
     const canvas = getFormatSize(bgId, size, format);
     const bgTransform = getBackgroundTransform(bgId, size, format);
     const parts: string[] = [];
 
-    // Фон
     const bgSvg = getBackgroundSvg(bgId, size);
     if (bgSvg) {
         const {inner} = parseSvg(recolorSvg(bgSvg, palette, 'background'));
@@ -44,7 +41,6 @@ export function buildSceneSvg({items, size, format, palette}: ExportParams): str
         parts.push(`<g id="background" transform="${bgTransform}">${prefixIds(bgInner, 'bg')}</g>`);
     }
 
-    // Объекты в порядке слоёв (последний сверху)
     items.forEach((item, index) => {
         const svg = getObjectSvg(item.objectId, size, item.variant);
         const box = getObjectBox(item.objectId, size, item.variant);

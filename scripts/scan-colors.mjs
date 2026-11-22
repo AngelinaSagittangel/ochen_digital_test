@@ -2,7 +2,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const RAW = 'src/assets/library-raw';
-const counts = new Map();   // hex -> { n, files:Set }
+const counts = new Map();
 
 async function walk(dir) {
     for (const entry of await readdir(dir, { withFileTypes: true })) {

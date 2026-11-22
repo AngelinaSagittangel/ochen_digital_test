@@ -18,7 +18,7 @@ export interface LibraryObject {
 export interface Palette {
     id: string;
     name: string;
-    background?: string;               // id готовой схемы, чей фон брать (по умолчанию = id)
+    background?: string;
     colors: Record<Role, string>;
 }
 
@@ -26,7 +26,7 @@ export interface SceneItem {
     uid: string;
     objectId: string;
     variant: Variant;
-    x: number;          // левый верхний угол объекта на холсте
+    x: number;
     y: number;
-    rotation: number;   // градусы, вокруг центра объекта
+    rotation: number;
 }

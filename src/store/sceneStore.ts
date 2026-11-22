@@ -18,9 +18,9 @@ interface SceneState {
     format: Format;
     paletteId: string;
     palettes: Palette[];
-    items: SceneItem[];              // порядок массива = порядок слоёв
+    items: SceneItem[];
     selectedId: string | null;
-    auto: AutoSpec | null;           // последний запрос автосборки (пока нет ручных правок)
+    auto: AutoSpec | null;
 
     setSize: (size: Size) => void;
     setFormat: (format: Format) => void;
